@@ -1,0 +1,50 @@
+import React from 'react';
+
+const BookCard = ({ book, onBorrow, onView }) => {
+  const isAvailable = book.available_copies > 0;
+
+  return (
+    <div className="card hover:shadow-md transition-shadow">
+      <div className="flex flex-col h-full">
+        <div className="flex-1">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+            {book.title}
+          </h3>
+          <p className="text-sm text-gray-600 mb-1">By {book.author}</p>
+          <p className="text-xs text-gray-500 mb-3">
+            Published: {book.published_year} • Genre: {book.genre?.name || 'N/A'}
+          </p>
+          
+          <div className="flex items-center justify-between mb-4">
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+              isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            }`}>
+              {isAvailable ? `${book.available_copies} available` : 'Out of stock'}
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex space-x-2">
+          {onView && (
+            <button
+              onClick={() => onView(book)}
+              className="flex-1 btn-secondary text-sm"
+            >
+              Details
+            </button>
+          )}
+          {onBorrow && isAvailable && (
+            <button
+              onClick={() => onBorrow(book)}
+              className="flex-1 btn-primary text-sm"
+            >
+              Borrow
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BookCard;

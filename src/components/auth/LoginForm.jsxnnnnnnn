@@ -1,0 +1,245 @@
+import React from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import LoginForm from './LoginForm.jsx';
+
+// Mock toast
+vi.mock('react-hot-toast', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
+}));
+
+// Mock useAuth (not used directly but imported)
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ login: vi.fn() }),
+}));
+
+// Helper to render with router
+const renderWithRouter = (ui) => render(<MemoryRouter>{ui}</MemoryRouter>);
+
+// Reset mocks and storage between tests
+beforeEach(() => {
+  vi.useFakeTimers();
+  localStorage.clear();
+  sessionStorage.clear();
+  vi.resetAllMocks();
+});
+
+afterEach(() => {
+  vi.runOnlyPendingTimers();
+  vi.useRealTimers();
+});
+
+describe('LoginForm', () => {
+  it('Should focus email input on mount', () => {
+    renderWithRouter(<LoginForm />);
+    const email = screen.getByLabelText(/email address/i);
+    expect(document.activeElement).toBe(email);
+  });
+
+  it('Should show error when submitting with empty fields', async () => {
+    const { toast } = await import('react-hot-toast');
+    renderWithRouter(<LoginForm />);
+    const submit = screen.getByRole('button', { name: /try backend login/i });
+    fireEvent.click(submit);
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Please enter both email and password');
+    });
+  });
+
+  it('Should perform mock login and set storage when Auto Login is clicked', async () => {
+    const { toast } = await import('react-hot-toast');
+    renderWithRouter(<LoginForm />);
+
+    const btn = screen.getByRole('button', { name: /click to auto login/i });
+    fireEvent.click(btn);
+
+    await waitFor(() => {
+      expect(localStorage.getItem('token')).toBe('mock-jwt-token-for-development');
+      expect(JSON.parse(localStorage.getItem('user'))).toMatchObject({ email: 'admin@library.com' });
+      expect(toast.success).toHaveBeenCalledWith('Logged in with mock credentials for development!');
+    });
+  });
+
+  it('Should attempt backend login with user-provided credentials and navigate on success', async () => {
+    // Spy on fetch to simulate backend success
+    const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ access_token: 'server-token', user: { id: 1, email: 'user@example.com' } }),
+    });
+
+    renderWithRouter(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'user@example.com' } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secret' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /try backend login/i }));
+
+    // Fast-forward any timers used for navigation delay
+    await waitFor(() => {
+      expect(fetchSpy).toHaveBeenCalled();
+      expect(localStorage.getItem('token')).toBe('server-token');
+      expect(JSON.parse(localStorage.getItem('user'))).toMatchObject({ email: 'user@example.com' });
+    });
+  });
+
+  it('Should fall back to credential discovery then mock on backend failure', async () => {
+    const { toast } = await import('react-hot-toast');
+    // Make all fetch attempts fail
+    const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: 'Invalid' }),
+      status: 401,
+    });
+
+    renderWithRouter(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'bad@example.com' } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'wrong' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /try backend login/i }));
+
+    // Discovery will iterate; eventually it will use mock login (calls window.location.href)
+    // Stub location to avoid full navigation in test
+    const originalLocation = window.location;
+    // @ts-ignore
+    delete window.location;
+    // @ts-ignore
+    window.location = { href: '/', assign: vi.fn(), replace: vi.fn() };
+
+    // Run pending timers for mock login redirect
+    await waitFor(() => {
+      expect(toast.info).toHaveBeenCalled();
+    });
+
+    // Cleanup
+    window.location = originalLocation;
+    fetchSpy.mockRestore();
+  });
+
+  it('Should provide quick credential buttons to populate fields', () => {
+    renderWithRouter(<LoginForm />);
+    const quick = screen.getAllByRole('button', { name: /pw:/i })[0];
+    fireEvent.click(quick);
+
+    const email = screen.getByLabelText(/email address/i);
+    const password = screen.getByLabelText(/password/i);
+    expect(email).toHaveValue(expect.any(String));
+    expect(password).toHaveValue(expect.any(String));
+  });
+});
+
+// Additional scenarios appended below to extend coverage
+
+describe('LoginForm additional behaviors', () => {
+  // Helper to stub and restore window.location safely per test
+  const withStubbedLocation = async (fn) => {
+    const originalLocation = window.location;
+    // @ts-ignore
+    delete window.location;
+    // @ts-ignore
+    window.location = { href: '/', assign: vi.fn(), replace: vi.fn() };
+    try {
+      await fn();
+    } finally {
+      window.location = originalLocation;
+    }
+  };
+
+  it('Should auto-attempt mock login after 2 seconds when not logged in (development timer)', async () => {
+    const { toast } = await import('react-hot-toast');
+    renderWithRouter(<LoginForm />);
+
+    await withStubbedLocation(async () => {
+      vi.advanceTimersByTime(2000);
+      await waitFor(() => {
+        expect(localStorage.getItem('token')).toBe('mock-jwt-token-for-development');
+        expect(toast.success).toHaveBeenCalledWith('Logged in with mock credentials for development!');
+      });
+    });
+  });
+
+  it('Should navigate immediately if already logged in on mount (no auto-login triggered)', async () => {
+    const { toast } = await import('react-hot-toast');
+    localStorage.setItem('token', 't');
+    localStorage.setItem('user', JSON.stringify({ id: 1 }));
+
+    renderWithRouter(<LoginForm />);
+
+    vi.advanceTimersByTime(2500);
+
+    // No new mock login should have occurred
+    expect(localStorage.getItem('token')).toBe('t');
+    expect(toast.success).not.toHaveBeenCalledWith('Logged in with mock credentials for development!');
+  });
+
+  it('Should show loading state disables submit during backend attempt', async () => {
+    // First backend attempt fails and resolves asynchronously
+    vi.spyOn(window, 'fetch').mockResolvedValueOnce({ ok: false, json: async () => ({ message: 'bad' }), status: 401 });
+
+    renderWithRouter(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'x@y.z' } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'p' } });
+
+    const submit = screen.getByRole('button', { name: /try backend login/i });
+    fireEvent.click(submit);
+
+    // While pending, the button should be disabled
+    expect(submit).toBeDisabled();
+
+    await waitFor(() => {
+      expect(submit).not.toBeDisabled();
+    });
+  });
+
+  it('Should use discovered credentials if discovery succeeds after user input failure', async () => {
+    const { toast } = await import('react-hot-toast');
+
+    const fetchSpy = vi
+      .spyOn(window, 'fetch')
+      // user-provided credentials fail
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ message: 'Invalid' }), status: 401 })
+      // first discovery attempt succeeds
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'disc-token', user: { email: 'admin@library.com' } }) });
+
+    renderWithRouter(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), { target: { value: 'bad@e.com' } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'nope' } });
+
+    await withStubbedLocation(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /try backend login/i }));
+
+      await waitFor(() => {
+        expect(fetchSpy).toHaveBeenCalled();
+        expect(localStorage.getItem('token')).toBe('disc-token');
+        expect(JSON.parse(localStorage.getItem('user'))).toMatchObject({ email: 'admin@library.com' });
+        expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/Using discovered credentials/i));
+      });
+    });
+
+    fetchSpy.mockRestore();
+  });
+
+  it('Should clear storage and reload when Reset Application is clicked', async () => {
+    localStorage.setItem('token', 'abc');
+    localStorage.setItem('user', JSON.stringify({ id: 1 }));
+
+    renderWithRouter(<LoginForm />);
+
+    await withStubbedLocation(async () => {
+      const reset = screen.getByRole('button', { name: /reset application/i });
+      fireEvent.click(reset);
+
+      await waitFor(() => {
+        expect(localStorage.getItem('token')).toBeNull();
+        expect(localStorage.getItem('user')).toBeNull();
+      });
+    });
+  });
+});
