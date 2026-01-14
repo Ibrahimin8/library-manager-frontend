@@ -1,15 +1,17 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000';
+// Use environment variable for API base URL
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Authorization': `Bearer ${process.env.REACT_APP_SECRET_KEY}`, // optional if needed
   },
 });
 
-// Request interceptor to add token
+// Request interceptor to add token from localStorage
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -18,9 +20,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor for error handling
