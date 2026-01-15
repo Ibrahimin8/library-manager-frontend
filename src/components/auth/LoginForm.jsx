@@ -80,7 +80,7 @@ const LoginForm = () => {
                 htmlFor="email-address" 
                 className={`block text-sm font-medium mb-1 ${authError ? 'text-red-600' : 'text-gray-700'}`}
               >
-                Email Address
+                UserName
               </label>
               <input
                 id="email-address"
