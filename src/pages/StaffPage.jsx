@@ -7,7 +7,7 @@ const StaffPage = () => {
   const [showUpdate, setShowUpdate] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
 
-  // Create form
+  
   const [createData, setCreateData] = useState({
     username: "",
     email: "",
@@ -15,7 +15,7 @@ const StaffPage = () => {
     role: "librarian",
   });
 
-  // Update form (requires id)
+  
   const [updateId, setUpdateId] = useState("");
   const [updateData, setUpdateData] = useState({
     username: "",
@@ -24,7 +24,7 @@ const StaffPage = () => {
     role: "librarian",
   });
 
-  // Delete form
+  
   const [deleteId, setDeleteId] = useState("");
 
   const getErrorMsg = (error, fallback) =>
@@ -57,7 +57,7 @@ const StaffPage = () => {
       await staffService.updateStaff(updateId, {
         username: updateData.username.trim(),
         email: updateData.email.trim(),
-        password: updateData.password, // Swagger shows required; keep it required in UI
+        password: updateData.password, 
         role: updateData.role,
       });
       toast.success("Staff updated successfully");
@@ -108,7 +108,7 @@ const StaffPage = () => {
         </div>
       </div>
 
-      {/* CREATE MODAL */}
+      
       {showCreate && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
@@ -161,7 +161,7 @@ const StaffPage = () => {
         </div>
       )}
 
-      {/* UPDATE MODAL */}
+      
       {showUpdate && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
@@ -221,7 +221,7 @@ const StaffPage = () => {
         </div>
       )}
 
-      {/* DELETE MODAL */}
+      
       {showDelete && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">

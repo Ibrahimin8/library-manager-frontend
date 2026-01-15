@@ -16,7 +16,7 @@ const StaffForm = ({ staff, onSubmit, onClose }) => {
       setFormData({
         username: staff.username || "",
         email: staff.email || "",
-        password: "", // do not prefill passwords
+        password: "", 
         role: staff.role || "librarian",
       });
     } else {

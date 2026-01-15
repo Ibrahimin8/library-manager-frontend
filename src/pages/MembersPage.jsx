@@ -89,9 +89,7 @@ const MembersPage = () => {
 
   const handleViewHistory = async (member) => {
     try {
-      // optional: only if you want to load history here
-      // const history = await memberService.getMemberBorrowingHistory(member.id);
-      // console.log(history);
+      
       toast.success(`Viewing history for ${member.name}`);
     } catch (e) {
       toast.error("Failed to load borrowing history");
@@ -119,7 +117,7 @@ const MembersPage = () => {
         </button>
       </div>
 
-      {/* Search Bar */}
+      
       <div className="card mb-6">
         <SearchBar
           value={searchTerm}
@@ -128,7 +126,7 @@ const MembersPage = () => {
         />
       </div>
 
-      {/* Member List */}
+      
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -142,7 +140,7 @@ const MembersPage = () => {
         />
       )}
 
-      {/* Member Form Modal */}
+      
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
