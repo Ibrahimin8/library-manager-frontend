@@ -69,7 +69,7 @@ const LoginForm = () => {
             Library management System
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            please use correct username and password to sign in
+            Please use correct username and password to sign in
           </p>
         </div>
         
