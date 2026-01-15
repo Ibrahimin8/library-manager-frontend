@@ -6,31 +6,32 @@ const OverdueBooks = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data - in real app, fetch from API
+    // currently i can not find usefull end point api for overdue books report
+    // so i am using mock data for demonstration purposes
     const mockData = [
       { 
         id: 1, 
-        book_title: 'The Great Gatsby', 
-        member_name: 'John Doe', 
-        member_email: 'john@example.com',
-        borrow_date: '2024-01-01', 
+        book_title: 'Ethiopean History', 
+        member_name: 'Semu K', 
+        member_email: 'semu@example.com',
+        borrow_date: '2022-01-01', 
         due_date: '2024-01-15',
         days_overdue: 5
       },
       { 
         id: 2, 
-        book_title: 'To Kill a Mockingbird', 
-        member_name: 'Jane Smith', 
-        member_email: 'jane@example.com',
-        borrow_date: '2024-01-02', 
+        book_title: 'Happy Family', 
+        member_name: 'Ibrahim', 
+        member_email: 'ibrahim@example.com',
+        borrow_date: '2021-01-02', 
         due_date: '2024-01-16',
         days_overdue: 4
       },
       { 
         id: 3, 
-        book_title: '1984', 
-        member_name: 'Bob Johnson', 
-        member_email: 'bob@example.com',
+        book_title: '13 Tsega', 
+        member_name: 'Tsehaynesh Hussein', 
+        member_email: 'tsehaynesh@example.com',
         borrow_date: '2024-01-03', 
         due_date: '2024-01-17',
         days_overdue: 3

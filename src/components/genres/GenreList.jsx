@@ -55,7 +55,7 @@ const GenreList = () => {
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
       <h2 className="text-xl font-bold text-gray-900 mb-6">Manage Genres</h2>
 
-      {/* Quick Add Form */}
+  
       <form onSubmit={handleCreate} className="flex gap-2 mb-8">
         <input
           type="text"
@@ -72,7 +72,7 @@ const GenreList = () => {
         </button>
       </form>
 
-      {/* Genre Table */}
+   
       {loading ? (
         <div className="text-center py-4 text-gray-400 italic">Updating categories...</div>
       ) : (

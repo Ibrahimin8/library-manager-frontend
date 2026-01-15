@@ -5,7 +5,8 @@ const PopularGenres = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data - in real app, fetch from API
+    // currently i can not find usefull end point api for popular genres report
+    // so i am using mock data for demonstration purposes
     const mockData = [
       { name: 'Fiction', borrow_count: 150, percentage: 30 },
       { name: 'Science', borrow_count: 120, percentage: 24 },

@@ -14,7 +14,7 @@ const navigation = [
   { name: 'Borrow/Return', href: '/borrow', icon: ArrowRightOnRectangleIcon },
   { name: 'Genres', href: '/genres', icon: TagIcon },
   { name: 'Staff', href: '/staff', icon: UserGroupIcon },
- // { name: 'Reports', href: '/reports', icon: ChartBarIcon },  currently i can not find usefull end point api for reports
+  { name: 'Reports', href: '/reports', icon: ChartBarIcon },  
 ];
 
 const Sidebar = () => {
