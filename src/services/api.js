@@ -9,7 +9,6 @@ const api = axios.create({
   },
 });
 
-
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -21,15 +20,24 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+     
+      const message = error.response.data?.message || 'Unauthorized';
+
+   
+      if (message !== 'Invalid email or password') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+
+     
+      return Promise.reject(new Error(message));
     }
+
     return Promise.reject(error);
   }
 );

@@ -1,247 +1,210 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { staffService } from "../services/staff";
 
 const StaffPage = () => {
-  const [showCreate, setShowCreate] = useState(false);
-  const [showUpdate, setShowUpdate] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
+  const [staffList, setStaffList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  
-  const [createData, setCreateData] = useState({
+  const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
     role: "librarian",
   });
 
-  
-  const [updateId, setUpdateId] = useState("");
-  const [updateData, setUpdateData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    role: "librarian",
-  });
+  useEffect(() => {
+    loadStaff();
+  }, []);
 
-  
-  const [deleteId, setDeleteId] = useState("");
+  const loadStaff = async () => {
+    try {
+      setLoading(true);
+     
+      const data = await staffService.getAllStaff();
+      setStaffList(data);
+    } catch (error) {
+      toast.error("Failed to load staff list");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getErrorMsg = (error, fallback) =>
     error?.response?.data?.message?.[0] ||
     error?.response?.data?.message ||
     fallback;
 
-  const handleCreate = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await staffService.createStaff({
-        username: createData.username.trim(),
-        email: createData.email.trim(),
-        password: createData.password,
-        role: createData.role,
-      });
-      toast.success("Staff created successfully");
-      setShowCreate(false);
-      setCreateData({ username: "", email: "", password: "", role: "librarian" });
+      if (editingId) {
+       
+        await staffService.updateStaff(editingId, {
+          username: formData.username.trim(),
+          email: formData.email.trim(),
+          role: formData.role,
+        });
+        toast.success("Staff updated successfully");
+      } else {
+       
+        await staffService.createStaff({
+          username: formData.username.trim(),
+          email: formData.email.trim(),
+          password: formData.password,
+          role: formData.role,
+        });
+        toast.success("Staff registered successfully");
+      }
+      handleCloseModal();
+      loadStaff();
     } catch (error) {
-      toast.error(getErrorMsg(error, "Failed to create staff"));
+      toast.error(getErrorMsg(error, "Operation failed"));
     }
   };
 
-  const handleUpdate = async (e) => {
-    e.preventDefault();
-    if (!updateId) return toast.error("Staff ID is required");
-
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this staff member?")) return;
     try {
-      await staffService.updateStaff(updateId, {
-        username: updateData.username.trim(),
-        email: updateData.email.trim(),
-        password: updateData.password, 
-        role: updateData.role,
-      });
-      toast.success("Staff updated successfully");
-      setShowUpdate(false);
-      setUpdateId("");
-      setUpdateData({ username: "", email: "", password: "", role: "librarian" });
-    } catch (error) {
-      toast.error(getErrorMsg(error, "Failed to update staff"));
-    }
-  };
-
-  const handleDelete = async (e) => {
-    e.preventDefault();
-    if (!deleteId) return toast.error("Staff ID is required");
-
-    if (!window.confirm("Delete this staff member?")) return;
-
-    try {
-      await staffService.deleteStaff(deleteId);
+      await staffService.deleteStaff(id);
       toast.success("Staff deleted successfully");
-      setShowDelete(false);
-      setDeleteId("");
+      loadStaff();
     } catch (error) {
       toast.error(getErrorMsg(error, "Failed to delete staff"));
     }
   };
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Staff Management</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            Create, update, and delete staff accounts (API has no staff list endpoint).
-          </p>
-        </div>
+  const handleEditClick = (staff) => {
+    setEditingId(staff.id);
+    setFormData({
+      username: staff.username,
+      email: staff.email,
+      role: staff.role,
+      password: "", 
+    });
+    setShowModal(true);
+  };
 
-        <div className="flex gap-3">
-          <button className="btn-primary" type="button" onClick={() => setShowCreate(true)}>
-            Add Staff
-          </button>
-          <button className="btn-secondary" type="button" onClick={() => setShowUpdate(true)}>
-            Update Staff
-          </button>
-          <button className="btn-secondary" type="button" onClick={() => setShowDelete(true)}>
-            Delete Staff
-          </button>
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setFormData({ username: "", email: "", password: "", role: "librarian" });
+  };
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Staff Management</h1>
+          <p className="mt-1 text-sm text-gray-500">Manage administrative and library personnel.</p>
         </div>
+        <button 
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+          onClick={() => setShowModal(true)}
+        >
+          Add New Staff
+        </button>
       </div>
 
-      
-      {showCreate && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-lg font-semibold mb-4">Create Staff (POST /staff)</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase">Username</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase">Email</th>
+              <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase">Role</th>
+              <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {loading ? (
+              <tr><td colSpan="4" className="text-center py-10">Loading staff...</td></tr>
+            ) : (
+              staffList.map((staff) => (
+                <tr key={staff.id} className="hover:bg-gray-50 transition">
+                  <td className="px-6 py-4 text-sm text-gray-900 font-medium">{staff.username}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600">{staff.email}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                      staff.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'
+                    }`}>
+                      {staff.role}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right space-x-4">
+                    <button onClick={() => handleEditClick(staff)} className="text-blue-600 hover:text-blue-800 font-semibold text-sm">Edit</button>
+                    <button onClick={() => handleDelete(staff.id)} className="text-red-600 hover:text-red-800 font-semibold text-sm">Delete</button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-            <form onSubmit={handleCreate} className="space-y-4">
-              <input
-                className="input-field"
-                placeholder="Username"
-                value={createData.username}
-                onChange={(e) => setCreateData((p) => ({ ...p, username: e.target.value }))}
-                required
-              />
-              <input
-                className="input-field"
-                placeholder="Email"
-                type="email"
-                value={createData.email}
-                onChange={(e) => setCreateData((p) => ({ ...p, email: e.target.value }))}
-                required
-              />
-              <input
-                className="input-field"
-                placeholder="Password"
-                type="password"
-                value={createData.password}
-                onChange={(e) => setCreateData((p) => ({ ...p, password: e.target.value }))}
-                required
-              />
-              <select
-                className="input-field"
-                value={createData.role}
-                onChange={(e) => setCreateData((p) => ({ ...p, role: e.target.value }))}
-                required
-              >
-                <option value="librarian">librarian</option>
-                <option value="admin">admin</option>
-              </select>
+     
+      {showModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <h2 className="text-xl font-bold mb-6 text-gray-900">
+              {editingId ? "Update Staff Details" : "Register New Staff"}
+            </h2>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" className="btn-secondary" onClick={() => setShowCreate(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Create
-                </button>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <input
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.username}
+                  onChange={(e) => setFormData(p => ({ ...p, username: e.target.value }))}
+                  required
+                />
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      
-      {showUpdate && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-lg font-semibold mb-4">Update Staff (PATCH /staff/:id)</h2>
-
-            <form onSubmit={handleUpdate} className="space-y-4">
-              <input
-                className="input-field"
-                placeholder="Staff ID"
-                value={updateId}
-                onChange={(e) => setUpdateId(e.target.value)}
-                required
-              />
-              <input
-                className="input-field"
-                placeholder="Username"
-                value={updateData.username}
-                onChange={(e) => setUpdateData((p) => ({ ...p, username: e.target.value }))}
-                required
-              />
-              <input
-                className="input-field"
-                placeholder="Email"
-                type="email"
-                value={updateData.email}
-                onChange={(e) => setUpdateData((p) => ({ ...p, email: e.target.value }))}
-                required
-              />
-              <input
-                className="input-field"
-                placeholder="Password"
-                type="password"
-                value={updateData.password}
-                onChange={(e) => setUpdateData((p) => ({ ...p, password: e.target.value }))}
-                required
-              />
-              <select
-                className="input-field"
-                value={updateData.role}
-                onChange={(e) => setUpdateData((p) => ({ ...p, role: e.target.value }))}
-                required
-              >
-                <option value="librarian">librarian</option>
-                <option value="admin">admin</option>
-              </select>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" className="btn-secondary" onClick={() => setShowUpdate(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary">
-                  Update
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(p => ({ ...p, email: e.target.value }))}
+                  required
+                />
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+              
+              {!editingId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData(p => ({ ...p, password: e.target.value }))}
+                    required
+                  />
+                </div>
+              )}
 
-      
-      {showDelete && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-lg font-semibold mb-4">Delete Staff (DELETE /staff/:id)</h2>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.role}
+                  onChange={(e) => setFormData(p => ({ ...p, role: e.target.value }))}
+                  required
+                >
+                  <option value="librarian">Librarian</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
 
-            <form onSubmit={handleDelete} className="space-y-4">
-              <input
-                className="input-field"
-                placeholder="Staff ID"
-                value={deleteId}
-                onChange={(e) => setDeleteId(e.target.value)}
-                required
-              />
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" className="btn-secondary" onClick={() => setShowDelete(false)}>
+              <div className="flex justify-end gap-3 pt-6">
+                <button type="button" className="text-gray-600 font-medium px-4" onClick={handleCloseModal}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary">
-                  Delete
+                <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-md font-bold hover:bg-blue-700">
+                  {editingId ? "Save Changes" : "Register Staff"}
                 </button>
               </div>
             </form>

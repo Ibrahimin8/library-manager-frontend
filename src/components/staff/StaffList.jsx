@@ -1,127 +1,187 @@
 import React, { useEffect, useState } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import React, { useEffect, useState } from 'react';
+import { staffService } from '../services/staffService';
+import { toast } from 'react-hot-toast';
 
-const StaffForm = ({ staff, onSubmit, onClose }) => {
-  const isEdit = Boolean(staff);
-
+const StaffPage = () => {
+  const [staffList, setStaffList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  
   const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    role: "librarian",
+    username: '',
+    email: '',
+    password: '',
+    role: 'librarian'
   });
 
   useEffect(() => {
-    if (staff) {
-      setFormData({
-        username: staff.username || "",
-        email: staff.email || "",
-        password: "", 
-        role: staff.role || "librarian",
-      });
-    } else {
-      setFormData({
-        username: "",
-        email: "",
-        password: "",
-        role: "librarian",
-      });
-    }
-  }, [staff]);
+    fetchStaff();
+  }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
+  const fetchStaff = async () => {
+    try {
+      const users = await staffService.getAllStaff();
+      setStaffList(users);
+    } catch (error) {
+      toast.error("Could not load staff list");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    try {
+      if (editingId) {
+        // Use PATCH /staff/{id}
+        await staffService.updateStaff(editingId, formData);
+        toast.success("Staff updated successfully");
+      } else {
+        // Use POST /auth/signup
+        await staffService.createStaff(formData);
+        toast.success("New staff registered successfully");
+      }
+      closeModal();
+      fetchStaff();
+    } catch (error) {
+      toast.error(error.message || "Action failed");
+    }
+  };
 
-    // match Swagger payload
-    const payload = {
-      username: formData.username.trim(),
-      email: formData.email.trim(),
-      role: formData.role,
-      ...(formData.password.trim() ? { password: formData.password } : {}),
-    };
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this staff member?")) {
+      try {
+        await staffService.deleteStaff(id);
+        toast.success("Staff member deleted");
+        fetchStaff();
+      } catch (error) {
+        toast.error("Failed to delete staff");
+      }
+    }
+  };
 
-    onSubmit(payload);
+  const openEditModal = (staff) => {
+    setEditingId(staff.id);
+    setFormData({
+      username: staff.username,
+      email: staff.email,
+      role: staff.role,
+      password: '' 
+    });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingId(null);
+    setFormData({ username: '', email: '', password: '', role: 'librarian' });
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">
-          {isEdit ? "Edit Staff" : "Add Staff"}
-        </h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-500" type="button">
-          <XMarkIcon className="h-6 w-6" />
+    <div className="p-8 max-w-6xl mx-auto">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Staff Management</h1>
+          <p className="text-gray-500">Manage Admins and Librarians</p>
+        </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="bg-blue-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-700 transition"
+        >
+          + Register New Staff
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Username *</label>
-          <input
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
-        </div>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">User</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Role</th>
+              <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {staffList.map((staff) => (
+              <tr key={staff.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4">
+                  <div className="font-medium text-gray-900">{staff.username}</div>
+                  <div className="text-sm text-gray-500">{staff.email}</div>
+                </td>
+                <td className="px-6 py-4">
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    staff.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {staff.role}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-right space-x-3">
+                  <button onClick={() => openEditModal(staff)} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Edit</button>
+                  <button onClick={() => handleDelete(staff.id)} className="text-red-600 hover:text-red-800 text-sm font-medium">Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="input-field"
-            required
-          />
+      
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 w-full max-w-md shadow-2xl">
+            <h2 className="text-xl font-bold mb-6">{editingId ? 'Edit Staff Member' : 'Register New Staff'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <input 
+                  type="text" required value={formData.username}
+                  onChange={(e) => setFormData({...formData, username: e.target.value})}
+                  className="w-full border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input 
+                  type="email" required value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="w-full border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              {!editingId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input 
+                    type="password" required value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    className="w-full border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select 
+                  value={formData.role}
+                  onChange={(e) => setFormData({...formData, role: e.target.value})}
+                  className="w-full border border-gray-300 p-2 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="librarian">Librarian</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-3 mt-8">
+                <button type="button" onClick={closeModal} className="px-4 py-2 text-gray-600 font-medium">Cancel</button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700">
+                  {editingId ? 'Save Changes' : 'Register'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Password {isEdit ? "(leave blank to keep unchanged)" : "*"}
-          </label>
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            className="input-field"
-            required={!isEdit}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
-          <select
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="input-field"
-            required
-          >
-            <option value="librarian">librarian</option>
-            <option value="admin">admin</option>
-          </select>
-        </div>
-
-        <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-          <button type="button" onClick={onClose} className="btn-secondary">
-            Cancel
-          </button>
-          <button type="submit" className="btn-primary">
-            {isEdit ? "Update Staff" : "Create Staff"}
-          </button>
-        </div>
-      </form>
+      )}
     </div>
   );
 };
 
-export default StaffForm;
+export default StaffPage;
